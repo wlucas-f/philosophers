@@ -4,7 +4,7 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-typedef struct s_data
+typedef struct s_table
 {
 	int nb_philo;
 	long time_to_die;
@@ -17,7 +17,7 @@ typedef struct s_data
 	pthread_mutex_t print_mutex;
 	pthread_mutex_t death_mutex;
 	struct s_philo *philos;
-} t_data;
+} t_table;
 
 typedef struct s_philo
 {
@@ -28,7 +28,7 @@ typedef struct s_philo
 	long	last_meal_time;
 	int		meals_eaten;
 	pthread_mutex_t	meal_mutex;
-	t_data *data;
+	t_table *data;
 } t_philo;
 
 
@@ -69,7 +69,7 @@ int validate_input(int ac, char **av)
 }
 
 
-int parse(t_data *data, int ac, char **av)
+int parse(t_table *data, int ac, char **av)
 {
 	if(validate_input(ac, av))
 		return(1);
@@ -88,10 +88,13 @@ int parse(t_data *data, int ac, char **av)
 	data->philos = malloc(sizeof(t_philo) * data->nb_philo);
 	if(!data->philos)
 		return 1;
+	data->forks = malloc(sizeof(pthread_mutex_t) * data->nb_philo);
+	if(!data->forks)
+		return 1;
 	return(0);
 }
 
-int init_philo(t_data *data, t_philo *philos)
+int init_philo(t_table *data, t_philo *philos)
 {
 	int i;
 	pthread_t *th;
@@ -103,43 +106,46 @@ int init_philo(t_data *data, t_philo *philos)
 	while(i < data->nb_philo)	
 	{
 		philos[i].id = i+1;
+		philos[i].left_fork = i;
+		philos[i].right_fork = (i + 1) % data->nb_philo;
 		philos[i].thread = th[i];
 		philos[i].data = data;
+		philos[i].meals_eaten = 0;
+		philos[i].last_meal_time = get_time();
 		i++;
 	}
 	return(0);
 }
 
-long timestamp_in_ms(t_data *data)
+long timestamp_in_ms(t_table *data)
 {
 	return((get_time() - data->start_time));
-}
-
-
-void *routine_1(void *data)
-{
-	t_data *args = (t_data *) data;
-
-	printf("number_of_philosophers: %d\n", args->nb_philo);
-	printf("time_to_die: %ld\n", args->time_to_die);
-	printf("time_to_eat: %ld\n", args->time_to_eat);
-	printf("time_to_sleep: %ld\n", args->time_to_sleep);
-	if (args->max_meals > 0)
-		printf("number_of_times_each_philosopher_must_eat: %d\n", args->max_meals);
-	printf("\n");
-	return NULL;
 }
 
 void *routine_2(void *arg)
 {
 	t_philo *philo = arg;
-	t_data *data = philo->data;
+	t_table *data = philo->data;
 	int id = philo->id;
+	int first = philo->right_fork;
+	int last = philo->left_fork;
 
-	printf("%ld %d has taken the fork\n", timestamp_in_ms(data), id);
-	sleep(1);
+	if(philo->id % 2)
+	{
+		first = philo->left_fork;
+		last = philo->right_fork;
+	}
+	pthread_mutex_lock(&data->forks[first]);
+	printf("%ld %d has taken a fork\n", timestamp_in_ms(data), id);
+	pthread_mutex_lock(&data->forks[last]);
+	printf("%ld %d has taken a fork\n", timestamp_in_ms(data), id);
+	pthread_mutex_lock(&philo->meal_mutex);
+	philo->meals_eaten++;
+	philo->last_meal_time = get_time();
 	printf("%ld %d is eating\n", timestamp_in_ms(data), id);
-	sleep(1);
+	pthread_mutex_unlock(&philo->meal_mutex);
+	pthread_mutex_unlock(&data->forks[first]);
+	pthread_mutex_unlock(&data->forks[last]);
 	printf("%ld %d is sleeping\n", timestamp_in_ms(data), id);
 	sleep(1);
 	printf("%ld %d is thinking\n", timestamp_in_ms(data), id);
@@ -149,30 +155,56 @@ void *routine_2(void *arg)
 	return NULL;
 }
 
-void start(t_data *data, t_philo *philos)
+void start(t_table *data, t_philo *philos)
 {
-	for(int i = 0; i < data->nb_philo; i++)
-		pthread_create(&philos[i].thread, NULL, &routine_2, &philos[i]);
-	for(int i = 0; i < data->nb_philo; i++)
-		pthread_join(philos[i].thread, NULL);
+	int i;
+
+	i = 0;
+	while(i < data->nb_philo)
+	{
+		if(pthread_create(&philos[i].thread, NULL, &routine_2, &philos[i]))
+			return ;
+		i++;
+	}
+	data->start_time = get_time();
+	i = 0;
+	while(i < data->nb_philo)
+	{
+		if(pthread_join(philos[i].thread, NULL))
+			return ;
+		i++;
+	}
+}
+
+void init_mutex(t_table *data, t_philo *philo)
+{
+	int i = 0;
+	while(i < data->nb_philo)
+	{
+		pthread_mutex_init(&data->forks[i], NULL);
+		pthread_mutex_init(&philo[i].meal_mutex, NULL);
+		i++;
+	}
+	pthread_mutex_init(&data->print_mutex, NULL);
+	pthread_mutex_init(&data->death_mutex, NULL);
 }
 
 int main(int ac, char **av)
 {
-	t_data *data;
+	t_table *data;
 	t_philo *philos;
-	pthread_t th[5];
 
 	if(ac < 5 || ac > 6)
 		return 1;
-	data = malloc(sizeof(t_data));
+	data = malloc(sizeof(t_table));
 	if(!data)
 		return (1);
 	if	(parse(data, ac, av))
 		return(1);
 	philos = data->philos;
+	init_mutex(data, philos);
 	init_philo(data, philos);
 	start(data, philos);
 	free(data);
-//	free(philos);
+	//	free(philos);
 }
