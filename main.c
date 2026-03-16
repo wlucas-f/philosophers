@@ -94,8 +94,11 @@ int parse(t_data *data, int ac, char **av)
 int init_philo(t_data *data, t_philo *philos)
 {
 	int i;
-	pthread_t th[data->nb_philo];
+	pthread_t *th;
 
+	th = malloc(sizeof(pthread_t) * data->nb_philo);
+	if(!th)
+		return(1);
 	i = 0;
 	while(i < data->nb_philo)	
 	{
@@ -146,6 +149,13 @@ void *routine_2(void *arg)
 	return NULL;
 }
 
+void start(t_data *data, t_philo *philos)
+{
+	for(int i = 0; i < data->nb_philo; i++)
+		pthread_create(&philos[i].thread, NULL, &routine_2, &philos[i]);
+	for(int i = 0; i < data->nb_philo; i++)
+		pthread_join(philos[i].thread, NULL);
+}
 
 int main(int ac, char **av)
 {
@@ -162,25 +172,7 @@ int main(int ac, char **av)
 		return(1);
 	philos = data->philos;
 	init_philo(data, philos);
-	int j = 0;
-	for(int i = 0; i < data->nb_philo; i++)
-	{
-		if(pthread_create(&philos->thread, NULL, &routine_2, philos++) != 0)
-			return 1;
-		j++;
-	}
-	for(int i = 0; i < j - 1; i++)
-	{
-		if(pthread_join((philos++)->thread, NULL) != 0)
-			return 1;
-	}
-
-	/*
-	if(pthread_create(&philo->thread, NULL, &routine_2, philo) != 0)
-		return 1;
-	if(pthread_join(philo->thread, NULL) != 0)
-		return 1;
-	*/
+	start(data, philos);
 	free(data);
 //	free(philos);
 }
