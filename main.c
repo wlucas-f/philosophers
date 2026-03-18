@@ -122,7 +122,7 @@ long timestamp_in_ms(t_table *data)
 	return((get_time() - data->start_time));
 }
 
-void *routine_2(void *arg)
+void *routine_1(void *arg)
 {
 	t_philo *philo = arg;
 	t_table *data = philo->data;
@@ -135,38 +135,65 @@ void *routine_2(void *arg)
 		first = philo->left_fork;
 		last = philo->right_fork;
 	}
-	pthread_mutex_lock(&data->forks[first]);
-	printf("%ld %d has taken a fork\n", timestamp_in_ms(data), id);
-	pthread_mutex_lock(&data->forks[last]);
-	printf("%ld %d has taken a fork\n", timestamp_in_ms(data), id);
-	pthread_mutex_lock(&philo->meal_mutex);
-	philo->meals_eaten++;
-	philo->last_meal_time = get_time();
-	printf("%ld %d is eating\n", timestamp_in_ms(data), id);
-	pthread_mutex_unlock(&philo->meal_mutex);
-	pthread_mutex_unlock(&data->forks[first]);
-	pthread_mutex_unlock(&data->forks[last]);
-	printf("%ld %d is sleeping\n", timestamp_in_ms(data), id);
-	sleep(1);
-	printf("%ld %d is thinking\n", timestamp_in_ms(data), id);
-	sleep(1);
+	while(!data->simulation_end)
+	{
+		pthread_mutex_lock(&data->forks[first]);
+		printf("%ld %d has taken a fork\n", timestamp_in_ms(data), id);
+		pthread_mutex_lock(&data->forks[last]);
+		printf("%ld %d has taken a fork\n", timestamp_in_ms(data), id);
+		pthread_mutex_lock(&philo->meal_mutex);
+		philo->meals_eaten++;
+		philo->last_meal_time = get_time();
+		pthread_mutex_unlock(&philo->meal_mutex);
+		printf("%ld %d is eating\n", timestamp_in_ms(data), id);
+		usleep(data->time_to_eat * 1000);
+		pthread_mutex_unlock(&data->forks[first]);
+		pthread_mutex_unlock(&data->forks[last]);
+		printf("%ld %d is sleeping\n", timestamp_in_ms(data), id);
+		usleep(data->time_to_sleep *1000);
+		printf("%ld %d is thinking\n", timestamp_in_ms(data), id);
+		usleep(500);
+	}
 	printf("%ld %d died\n", timestamp_in_ms(data), id);
-	sleep(1);
+	return NULL;
+}
+
+void *routine_2(void *arg)
+{
+	t_table *data = arg;
+	t_philo *philos = data->philos;
+	int i;
+	while(1)
+	{
+		i = 0;
+		int name = philos[i].id;
+		while(i < data->nb_philo)
+		{
+			pthread_mutex_lock(&philos[i].meal_mutex);
+			if((get_time() - philos[i].last_meal_time > data->time_to_die))
+				data->simulation_end = 1;
+			pthread_mutex_unlock(&philos[i].meal_mutex);
+			i++;
+		}
+	}
 	return NULL;
 }
 
 void start(t_table *data, t_philo *philos)
 {
+	pthread_t monitor;
 	int i;
 
 	i = 0;
 	while(i < data->nb_philo)
 	{
-		if(pthread_create(&philos[i].thread, NULL, &routine_2, &philos[i]))
+		if(pthread_create(&philos[i].thread, NULL, &routine_1, &philos[i]))
 			return ;
 		i++;
 	}
 	data->start_time = get_time();
+	if(pthread_create(&monitor, NULL, &routine_2, &*data))
+		return ;
 	i = 0;
 	while(i < data->nb_philo)
 	{
@@ -174,6 +201,8 @@ void start(t_table *data, t_philo *philos)
 			return ;
 		i++;
 	}
+	if(pthread_join(monitor, NULL))
+		return ;
 }
 
 void init_mutex(t_table *data, t_philo *philo)
