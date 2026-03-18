@@ -122,39 +122,54 @@ long timestamp_in_ms(t_table *data)
 	return((get_time() - data->start_time));
 }
 
-void *routine_1(void *arg)
+void safe_print(t_table *data, char *msg, int id)
 {
-	t_philo *philo = arg;
+	pthread_mutex_lock(&data->print_mutex);
+	if(!data->simulation_end)
+		printf("%ld %d %s\n", timestamp_in_ms(data), id, msg);
+	pthread_mutex_unlock(&data->print_mutex);
+}
+
+void eat(t_philo *philo)
+{
 	t_table *data = philo->data;
 	int id = philo->id;
-	int first = philo->right_fork;
 	int last = philo->left_fork;
+	int first = philo->right_fork;
 
 	if(philo->id % 2)
 	{
 		first = philo->left_fork;
 		last = philo->right_fork;
 	}
+	pthread_mutex_lock(&data->forks[first]);
+	safe_print(data, "has taken a fork", id);
+	pthread_mutex_lock(&data->forks[last]);
+	safe_print(data, "has taken a fork", id);
+	pthread_mutex_lock(&philo->meal_mutex);
+	philo->meals_eaten++;
+	philo->last_meal_time = get_time();
+	safe_print(data, "is eating", id);
+	pthread_mutex_unlock(&philo->meal_mutex);
+	usleep(data->time_to_eat * 1000);
+	pthread_mutex_unlock(&data->forks[first]);
+	pthread_mutex_unlock(&data->forks[last]);
+}
+
+void *routine_1(void *arg)
+{
+	t_philo *philo = arg;
+	t_table *data = philo->data;
+	int id = philo->id;
+	
 	while(!data->simulation_end)
 	{
-		pthread_mutex_lock(&data->forks[first]);
-		printf("%ld %d has taken a fork\n", timestamp_in_ms(data), id);
-		pthread_mutex_lock(&data->forks[last]);
-		printf("%ld %d has taken a fork\n", timestamp_in_ms(data), id);
-		pthread_mutex_lock(&philo->meal_mutex);
-		philo->meals_eaten++;
-		philo->last_meal_time = get_time();
-		pthread_mutex_unlock(&philo->meal_mutex);
-		printf("%ld %d is eating\n", timestamp_in_ms(data), id);
-		usleep(data->time_to_eat * 1000);
-		pthread_mutex_unlock(&data->forks[first]);
-		pthread_mutex_unlock(&data->forks[last]);
-		printf("%ld %d is sleeping\n", timestamp_in_ms(data), id);
+		eat(philo);
+		safe_print(data, "is sleeping", id);
 		usleep(data->time_to_sleep *1000);
-		printf("%ld %d is thinking\n", timestamp_in_ms(data), id);
+		safe_print(data, "is thinking", id);
 		usleep(500);
 	}
-	printf("%ld %d died\n", timestamp_in_ms(data), id);
 	return NULL;
 }
 
@@ -163,15 +178,23 @@ void *routine_2(void *arg)
 	t_table *data = arg;
 	t_philo *philos = data->philos;
 	int i;
-	while(1)
+	while(!data->simulation_end)
 	{
 		i = 0;
-		int name = philos[i].id;
 		while(i < data->nb_philo)
 		{
 			pthread_mutex_lock(&philos[i].meal_mutex);
 			if((get_time() - philos[i].last_meal_time > data->time_to_die))
+			{
 				data->simulation_end = 1;
+				pthread_mutex_lock(&data->print_mutex);
+				pthread_mutex_lock(&data->death_mutex);
+				printf("%ld %d died\n", timestamp_in_ms(data), philos[i].id);
+				pthread_mutex_unlock(&data->death_mutex);
+				pthread_mutex_unlock(&data->print_mutex);
+				pthread_mutex_unlock(&philos[i].meal_mutex);
+				return NULL;
+			}
 			pthread_mutex_unlock(&philos[i].meal_mutex);
 			i++;
 		}
