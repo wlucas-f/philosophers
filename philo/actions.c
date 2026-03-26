@@ -12,7 +12,7 @@
 
 #include "philo.h"
 
-void	assing_forks(t_philo *philo, int *first, int *last)
+void	assign_forks(t_philo *philo, int *first, int *last)
 {
 	*last = philo->left_fork;
 	*first = philo->right_fork;
