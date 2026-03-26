@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   actions.c                                          :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: wlucas-f <wlucas-f@student.42porto.com>    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/03/26 15:07:29 by wlucas-f          #+#    #+#             */
+/*   Updated: 2026/03/26 15:07:35 by wlucas-f         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "philo.h"
 
 void	assing_forks(t_philo *philo, int *first, int *last)
@@ -16,7 +28,7 @@ void	eat(t_table *data, t_philo *philo)
 	int	last;
 	int	first;
 
-	assing_forks(philo, &first, &last);
+	assign_forks(philo, &first, &last);
 	pthread_mutex_lock(&data->forks[first]);
 	safe_print(data, "has taken a fork", philo->id);
 	if (data->nb_philo == 1)

@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   philo.h                                            :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: wlucas-f <wlucas-f@student.42porto.com>    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/03/26 15:08:36 by wlucas-f          #+#    #+#             */
+/*   Updated: 2026/03/26 15:08:41 by wlucas-f         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #ifndef PHILO_H
 # define PHILO_H
 
@@ -35,7 +47,10 @@ typedef struct s_philo
 	t_table			*data;
 }					t_philo;
 
-void				assing_forks(t_philo *philo, int *first, int *last);
+int					ft_atoi(char *s);
+int					parse(t_table *data, int ac, char **av);
+void				start(t_table *data, t_philo *philos);
+void				assign_forks(t_philo *philo, int *first, int *last);
 void				eat(t_table *data, t_philo *philo);
 void				destroy_mutex(t_table *data, t_philo *philo);
 int					init_philo(t_table *data, t_philo *philos);

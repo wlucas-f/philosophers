@@ -1,20 +1,55 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   main.c                                             :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: wlucas-f <wlucas-f@student.42porto.com>    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/03/26 15:08:23 by wlucas-f          #+#    #+#             */
+/*   Updated: 2026/03/26 15:08:26 by wlucas-f         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "philo.h"
+
+int	ft_atoi(char *s)
+{
+	int	i;
+	int	res;
+	int	sign;
+
+	sign = 1;
+	while (s[i] == ' ' || s[i] >= 9 && s[i] <= 13)
+		i++;
+	if (s[i] == '-' || s[i] == '+')
+	{
+		if (s[i] == '-')
+			sign *= -1;
+		i++;
+	}
+	while (s[i] >= '0' && s[i] <= '9')
+	{
+		res = res * 10 + s[i] - '0';
+		i++;
+	}
+	return (res * sign);
+}
 
 int	parse(t_table *data, int ac, char **av)
 {
 	if (validate_input(ac, av))
 		return (1);
 	data->nb_philo = 0;
-	data->nb_philo = atoi(av[1]);
+	data->nb_philo = ft_atoi(av[1]);
 	data->forks = malloc(sizeof(pthread_mutex_t) * data->nb_philo);
 	if (!data->forks)
 		return (1);
-	data->time_to_die = atoi(av[2]);
-	data->time_to_eat = atoi(av[3]);
-	data->time_to_sleep = atoi(av[4]);
+	data->time_to_die = ft_atoi(av[2]);
+	data->time_to_eat = ft_atoi(av[3]);
+	data->time_to_sleep = ft_atoi(av[4]);
 	data->max_meals = -1;
 	if (ac == 6)
-		data->max_meals = atoi(av[5]);
+		data->max_meals = ft_atoi(av[5]);
 	data->start_time = get_time();
 	data->simulation_end = 0;
 	data->philos = malloc(sizeof(t_philo) * data->nb_philo);
