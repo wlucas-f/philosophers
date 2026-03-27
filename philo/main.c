@@ -42,7 +42,7 @@ int	parse(t_table *data, int ac, char **av)
 	data->max_meals = -1;
 	if (ac == 6)
 		data->max_meals = ft_atoi(av[5]);
-	data->start_time = 0;
+	data->start_time = get_time();
 	data->simulation_end = 0;
 	data->philos = malloc(sizeof(t_philo) * data->nb_philo);
 	if (!data->philos)
@@ -56,15 +56,15 @@ void	start(t_table *data, t_philo *philos)
 	int			i;
 
 	i = 0;
+	pthread_mutex_lock(&data->print_mutex);
+	data->start_time = get_time();
+	pthread_mutex_unlock(&data->print_mutex);
 	while (i < data->nb_philo)
 	{
 		if (pthread_create(&philos[i].thread, NULL, &routine_1, &philos[i]))
 			return ;
 		i++;
 	}
-	pthread_mutex_lock(&data->print_mutex);
-	data->start_time = get_time();
-	pthread_mutex_unlock(&data->print_mutex);
 	if (pthread_create(&monitor, NULL, &routine_2, &*data))
 		return ;
 	i = 0;
